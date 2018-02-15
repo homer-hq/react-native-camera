@@ -1,7 +1,5 @@
-import Camera from './Camera';
+// import Camera from './Camera';
 import RNCamera from './RNCamera';
-import FaceDetector from './FaceDetector';
+// import FaceDetector from './FaceDetector';
 
-export { RNCamera, FaceDetector };
-
-export default Camera;
+export { RNCamera };
