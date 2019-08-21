@@ -258,7 +258,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
      * @param options Options.
      * @return Throwable; null if no errors.
      */
-    private Throwable prepareMediaRecorder(ReadableMap options) {
+    private Throwable prepareMediaRecorder(ReadableMap options, int deviceOrientation) {
         // Prepare CamcorderProfile instance, setting essential options.
         CamcorderProfile cm = RCTCamera.getInstance().setCaptureVideoQuality(options.getInt("type"), options.getString("quality"));
         if (cm == null) {
@@ -285,7 +285,17 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
 
         // Adjust for orientation.
-        mMediaRecorder.setOrientationHint(RCTCamera.getInstance().getAdjustedDeviceOrientation());
+        // mMediaRecorder.setOrientationHint(RCTCamera.getInstance().getAdjustedDeviceOrientation());
+        switch (deviceOrientation) {
+            case 0: mMediaRecorder.setOrientationHint(90);
+              break;
+            case 1: mMediaRecorder.setOrientationHint(0);
+              break;
+            case 2: mMediaRecorder.setOrientationHint(270);
+              break;
+            case 3: mMediaRecorder.setOrientationHint(180);
+              break;
+          }
 
         // Set video output format and encoding using CamcorderProfile.
         cm.fileFormat = MediaRecorder.OutputFormat.MPEG_4;
@@ -335,7 +345,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
         return null;
     }
 
-    private void record(final ReadableMap options, final Promise promise) {
+    private void record(final ReadableMap options, final Promise promise, final int deviceOrientation) {
         if (mRecordingPromise != null) {
             return;
         }
@@ -346,7 +356,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
             return;
         }
 
-        Throwable prepareError = prepareMediaRecorder(options);
+        Throwable prepareError = prepareMediaRecorder(options, deviceOrientation);
         if (prepareError != null) {
             promise.reject(prepareError);
             return;
@@ -424,7 +434,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
         switch (mRecordingOptions.getInt("target")) {
             case RCT_CAMERA_CAPTURE_TARGET_MEMORY:
                 byte[] encoded = convertFileToByteArray(mVideoFile);
-                response.putString("data", new String(encoded, Base64.DEFAULT));
+                response.putString("data", new String(encoded, Base64.NO_WRAP));
                 mRecordingPromise.resolve(response);
                 f.delete();
                 break;
@@ -515,7 +525,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
         }
 
         if (options.getInt("mode") == RCT_CAMERA_CAPTURE_MODE_VIDEO) {
-            record(options, promise);
+            record(options, promise, deviceOrientation);
             return;
         }
 
@@ -724,7 +734,12 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
         if (parameters.isZoomSupported()) {
             if (zoom >=0 && zoom < maxZoom) {
                 parameters.setZoom(zoom);
-                camera.setParameters(parameters);
+                try{
+                  camera.setParameters(parameters);
+                }
+                catch(RuntimeException e ) {
+                  Log.e("RCTCameraModule", "setParameters failed", e);
+                }
             }
         }
     }
@@ -808,7 +823,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
      */
     @Override
     public void onHostResume() {
-        // ... do nothing
+        mSafeToCapture = true;
     }
 
     @Override
